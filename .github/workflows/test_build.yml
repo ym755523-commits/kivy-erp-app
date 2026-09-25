@@ -1,0 +1,47 @@
+name: Test Build APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+
+      - name: Prepare test directory
+        run: |
+          mkdir -p /tmp/testbuild
+          find . -name "main_test.py" -exec cp {} /tmp/testbuild/main.py \;
+          find . -name "buildozer_test.spec" -exec cp {} /tmp/testbuild/buildozer.spec \;
+          find . -name "Amiri-Bold.ttf" -exec cp {} /tmp/testbuild/ \;
+          find . -name "Amiri-Regular.ttf" -exec cp {} /tmp/testbuild/ \;
+          echo "=== محتوى مجلد الاختبار ==="
+          ls -la /tmp/testbuild/
+
+      - name: Build Test APK
+        working-directory: /tmp/testbuild
+        run: |
+          yes | buildozer -v android debug
+
+      - name: Upload Test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-test
+          path: /tmp/testbuild/bin/*.apk
+          retention-days: 30
